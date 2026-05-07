@@ -1063,6 +1063,7 @@
                     <div class="card-header">
                         <h3>🏢 Step 2: 注册企业/自定义故障数据</h3>
                         <button class="btn btn-sm" onclick="dsLoadCustomSchema()">查看接口结构</button>
+                        <button class="btn btn-sm" onclick="dsLoadOtelSchema()">标准 OTEL 采集接口</button>
                     </div>
                     <div style="padding:16px;">
                         <div class="grid-2col">
@@ -1076,9 +1077,12 @@
                             </div>
                         </div>
                         <textarea id="ds-custom-json" class="custom-json-input" spellcheck="false"></textarea>
+                        <p class="text-muted" style="margin-top:8px;">支持直接注册统一 JSON，也支持标准 OpenTelemetry OTLP/JSON：resourceSpans、resourceMetrics、resourceLogs。</p>
                         <div class="filter-row" style="margin-top:12px;">
                             <button class="btn btn-primary" onclick="dsRegisterCustomCase()">注册为数据源案例</button>
+                            <button class="btn btn-primary" onclick="dsRegisterOtelCase()">注册 OTEL 案例</button>
                             <button class="btn" onclick="dsFillCustomExample()">填入示例</button>
+                            <button class="btn" onclick="dsFillOtelExample()">填入 OTEL 示例</button>
                             <span id="ds-custom-status" class="text-muted"></span>
                         </div>
                         <pre id="ds-custom-schema" class="raw-data-box" style="display:none;"></pre>

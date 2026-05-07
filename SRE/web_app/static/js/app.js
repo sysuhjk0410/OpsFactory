@@ -3705,9 +3705,136 @@ function dsFillCustomExample(force = true) {
     box.value = JSON.stringify(example, null, 2);
 }
 
+function dsFillOtelExample(force = true) {
+    const box = document.getElementById('ds-custom-json');
+    if (!box) return;
+    if (!force && box.value.trim()) return;
+    const root = document.getElementById('ds-custom-root')?.value || 'payment';
+    const nowNs = String(Date.now()) + '000000';
+    const traceId = '4fd0b1a54d6f4b9ab77f1f18e5c2aa31';
+    const example = {
+        case_id: 'otel-checkout-timeout',
+        case_name: 'OTEL checkout timeout from collector',
+        severity: 'critical',
+        root_cause_ground_truth: `${root} is the root cause.`,
+        otel: {
+            traces: {
+                resourceSpans: [
+                    {
+                        resource: { attributes: [{ key: 'service.name', value: { stringValue: 'front-end' } }] },
+                        scopeSpans: [{
+                            scope: { name: 'checkout-api' },
+                            spans: [
+                                {
+                                    traceId,
+                                    spanId: '1111111111111111',
+                                    name: 'POST /checkout',
+                                    kind: 'SPAN_KIND_SERVER',
+                                    startTimeUnixNano: nowNs,
+                                    endTimeUnixNano: String(Date.now() + 3850) + '000000',
+                                    attributes: [
+                                        { key: 'http.route', value: { stringValue: '/checkout' } },
+                                        { key: 'http.status_code', value: { intValue: '500' } },
+                                    ],
+                                    status: { code: 'STATUS_CODE_ERROR', message: 'downstream payment timeout' },
+                                },
+                            ],
+                        }],
+                    },
+                    {
+                        resource: { attributes: [{ key: 'service.name', value: { stringValue: root } }] },
+                        scopeSpans: [{
+                            scope: { name: 'payment-client' },
+                            spans: [
+                                {
+                                    traceId,
+                                    spanId: '2222222222222222',
+                                    parentSpanId: '1111111111111111',
+                                    name: 'POST /charge',
+                                    kind: 'SPAN_KIND_CLIENT',
+                                    startTimeUnixNano: nowNs,
+                                    endTimeUnixNano: String(Date.now() + 3600) + '000000',
+                                    attributes: [
+                                        { key: 'rpc.system', value: { stringValue: 'http' } },
+                                        { key: 'peer.service', value: { stringValue: 'payment-provider' } },
+                                    ],
+                                    status: { code: 'STATUS_CODE_ERROR', message: 'timeout after 3000ms' },
+                                },
+                            ],
+                        }],
+                    },
+                ],
+            },
+            metrics: {
+                resourceMetrics: [{
+                    resource: { attributes: [{ key: 'service.name', value: { stringValue: root } }] },
+                    scopeMetrics: [{
+                        scope: { name: 'otel-metrics' },
+                        metrics: [
+                            {
+                                name: 'http.server.request.duration.p99',
+                                unit: 'ms',
+                                gauge: {
+                                    dataPoints: [
+                                        { timeUnixNano: nowNs, asDouble: 3800, attributes: [{ key: 'http.route', value: { stringValue: '/charge' } }] },
+                                        { timeUnixNano: String(Date.now() + 15000) + '000000', asDouble: 5200, attributes: [{ key: 'http.route', value: { stringValue: '/charge' } }] },
+                                    ],
+                                },
+                            },
+                            {
+                                name: 'http.server.error_rate',
+                                unit: '1',
+                                gauge: {
+                                    dataPoints: [
+                                        { timeUnixNano: nowNs, asDouble: 0.38 },
+                                        { timeUnixNano: String(Date.now() + 15000) + '000000', asDouble: 0.47 },
+                                    ],
+                                },
+                            },
+                        ],
+                    }],
+                }],
+            },
+            logs: {
+                resourceLogs: [{
+                    resource: { attributes: [{ key: 'service.name', value: { stringValue: root } }] },
+                    scopeLogs: [{
+                        scope: { name: 'application-log' },
+                        logRecords: [
+                            {
+                                timeUnixNano: nowNs,
+                                severityText: 'ERROR',
+                                body: { stringValue: 'payment provider timeout after 3000ms' },
+                                traceId,
+                                spanId: '2222222222222222',
+                                attributes: [
+                                    { key: 'error.type', value: { stringValue: 'TimeoutError' } },
+                                    { key: 'k8s.namespace.name', value: { stringValue: 'production' } },
+                                ],
+                            },
+                        ],
+                    }],
+                }],
+            },
+        },
+        enterprise_metadata: {
+            origin_system: 'opentelemetry-collector',
+            collector_pipeline: 'otlp/http json',
+        },
+    };
+    box.value = JSON.stringify(example, null, 2);
+}
+
 async function dsLoadCustomSchema() {
     const schemaEl = document.getElementById('ds-custom-schema');
     const data = await api('/api/datasources/custom/schema');
+    schemaEl.style.display = 'block';
+    schemaEl.textContent = JSON.stringify(data, null, 2);
+}
+
+async function dsLoadOtelSchema() {
+    const schemaEl = document.getElementById('ds-custom-schema');
+    const data = await api('/api/datasources/custom/otel/schema');
     schemaEl.style.display = 'block';
     schemaEl.textContent = JSON.stringify(data, null, 2);
 }
@@ -3745,6 +3872,45 @@ async function dsRegisterCustomCase() {
     statusEl.textContent = '已注册，可进入 RCA';
     document.getElementById('ds-custom-case-name').textContent = _dsCaseName;
     document.getElementById('ds-custom-case-desc').textContent = `Source: custom-enterprise | Case: ${data.case_id}`;
+    document.getElementById('ds-custom-confirm').style.display = 'block';
+    await dsLoadTopology(_dsSourceId, _dsCaseId);
+}
+
+async function dsRegisterOtelCase() {
+    const statusEl = document.getElementById('ds-custom-status');
+    const box = document.getElementById('ds-custom-json');
+    const caseId = document.getElementById('ds-custom-case-id')?.value?.trim();
+    const root = document.getElementById('ds-custom-root')?.value?.trim();
+    statusEl.textContent = '注册 OTEL 中...';
+    let payload = {};
+    try {
+        payload = JSON.parse(box.value || '{}');
+    } catch (e) {
+        statusEl.textContent = 'JSON 格式错误: ' + e.message;
+        return;
+    }
+    if (caseId) payload.case_id = caseId;
+    if (root && !payload.root_cause_ground_truth) payload.root_cause_ground_truth = `${root} is the root cause.`;
+    const data = await api('/api/datasources/custom/otel/register_case', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+    });
+    if (!data || data.error) {
+        statusEl.textContent = 'OTEL 注册失败: ' + (data?.error || '未知错误');
+        return;
+    }
+    _dsType = 'custom';
+    _dsCaseId = data.case_id;
+    _dsSourceId = 'custom-enterprise';
+    _dsCaseName = payload.case_name || data.case_id;
+    _dsFaultType = 'otel_observability_case';
+    _dsFaultTarget = root || '';
+    _dsCanRestore = false;
+    const stats = data.otel_stats || {};
+    statusEl.textContent = `OTEL 已注册：${stats.span_count || 0} spans / ${stats.metric_point_count || 0} metric points / ${stats.log_count || 0} logs`;
+    document.getElementById('ds-custom-case-name').textContent = _dsCaseName;
+    document.getElementById('ds-custom-case-desc').textContent =
+        `Source: custom-enterprise | Case: ${data.case_id} | OTEL: ${stats.service_count || 0} services`;
     document.getElementById('ds-custom-confirm').style.display = 'block';
     await dsLoadTopology(_dsSourceId, _dsCaseId);
 }

@@ -2973,6 +2973,18 @@ async def custom_datasource_schema():
     }
 
 
+@app.get("/api/datasources/custom/otel/schema")
+async def custom_otel_datasource_schema():
+    """Return the standard OTEL collection integration contract."""
+    adapter = get_ds_adapter("custom-enterprise")
+    schema = adapter.otel_schema() if hasattr(adapter, "otel_schema") else {}
+    return {
+        "source_id": "custom-enterprise",
+        "purpose": "标准 OpenTelemetry OTLP/JSON 数据可在这里转成统一 RCA 案例，进入多智能体、Hermes 和企业 RCA 流程。",
+        "schema": schema,
+    }
+
+
 @app.post("/api/datasources/custom/register_case")
 async def register_custom_case(request: Request):
     """Register a custom enterprise fault case."""
@@ -2986,6 +2998,77 @@ async def register_custom_case(request: Request):
         raise HTTPException(400, str(e)) from e
     except Exception as e:
         raise HTTPException(500, f"Custom case registration failed: {e}") from e
+
+
+@app.post("/api/datasources/custom/otel/register_case")
+async def register_custom_otel_case(request: Request):
+    """Register a custom enterprise fault case from a batch OTLP/JSON payload."""
+    body = await request.json()
+    adapter = get_ds_adapter("custom-enterprise")
+    if not hasattr(adapter, "register_otel_case"):
+        raise HTTPException(500, "custom-enterprise adapter does not support OTEL registration")
+    try:
+        return adapter.register_otel_case(body)
+    except DataSourceError as e:
+        raise HTTPException(400, str(e)) from e
+    except Exception as e:
+        raise HTTPException(500, f"OTEL case registration failed: {e}") from e
+
+
+async def _register_custom_otel_signal(
+    signal_type: str,
+    request: Request,
+    case_id: str = "",
+    case_name: str = "",
+    root_cause_ground_truth: str = "",
+):
+    """Accept one OTLP/JSON signal and merge it into an enterprise case."""
+    body = await request.json()
+    adapter = get_ds_adapter("custom-enterprise")
+    if not hasattr(adapter, "register_otel_signal"):
+        raise HTTPException(500, "custom-enterprise adapter does not support OTEL signal ingestion")
+    try:
+        return adapter.register_otel_signal(
+            signal_type,
+            body,
+            case_id=case_id,
+            case_name=case_name,
+            root_cause_ground_truth=root_cause_ground_truth,
+        )
+    except DataSourceError as e:
+        raise HTTPException(400, str(e)) from e
+    except Exception as e:
+        raise HTTPException(500, f"OTEL {signal_type} ingestion failed: {e}") from e
+
+
+@app.post("/api/datasources/custom/otel/v1/traces")
+async def ingest_custom_otel_traces(
+    request: Request,
+    case_id: str = "",
+    case_name: str = "",
+    root_cause_ground_truth: str = "",
+):
+    return await _register_custom_otel_signal("traces", request, case_id, case_name, root_cause_ground_truth)
+
+
+@app.post("/api/datasources/custom/otel/v1/metrics")
+async def ingest_custom_otel_metrics(
+    request: Request,
+    case_id: str = "",
+    case_name: str = "",
+    root_cause_ground_truth: str = "",
+):
+    return await _register_custom_otel_signal("metrics", request, case_id, case_name, root_cause_ground_truth)
+
+
+@app.post("/api/datasources/custom/otel/v1/logs")
+async def ingest_custom_otel_logs(
+    request: Request,
+    case_id: str = "",
+    case_name: str = "",
+    root_cause_ground_truth: str = "",
+):
+    return await _register_custom_otel_signal("logs", request, case_id, case_name, root_cause_ground_truth)
 
 
 @app.get("/api/datasources/{source_id}/info")

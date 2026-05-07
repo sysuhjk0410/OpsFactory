@@ -378,6 +378,15 @@ http://127.0.0.1:8080
   <summary><strong>1. 数据平台</strong></summary>
 
   数据平台是所有 RCA 的入口。它支持 Cloud-OpsBench 离线案例、真实 Kubernetes 故障注入、企业/自定义故障 JSON 数据，以及企业 RCA 算法流程注册。选择 case 后，系统会展示拓扑、日志、链路、指标、告警和工具预案。
+
+  企业接口同时支持标准 OpenTelemetry OTLP/JSON 采集。用户可以在「企业/自定义数据」中点击 **标准 OTEL 采集接口** 查看接口契约，或直接通过接口接入 `resourceSpans`、`resourceMetrics`、`resourceLogs`。系统会把 OTEL traces / metrics / logs 归一化为同一个故障 case，并自动生成 RCA 所需的日志、链路、指标、告警、服务拓扑和工具预案。
+
+  | OTEL 接口 | 用途 |
+  | --- | --- |
+  | `POST /api/datasources/custom/otel/register_case` | 批量注册包含 traces / metrics / logs 的 OTLP/JSON 故障案例。 |
+  | `POST /api/datasources/custom/otel/v1/traces?case_id=<case>` | 接收标准 `resourceSpans`，可与同一 `case_id` 的指标和日志合并。 |
+  | `POST /api/datasources/custom/otel/v1/metrics?case_id=<case>` | 接收标准 `resourceMetrics`，转换为 RCA 可使用的指标摘要和原始点位。 |
+  | `POST /api/datasources/custom/otel/v1/logs?case_id=<case>` | 接收标准 `resourceLogs`，转换为日志证据并生成错误告警。 |
 </details>
 
 <details>
@@ -465,6 +474,7 @@ OpsFactory/
 │   ├── doc/
 │   ├── eval/
 │   ├── integrations/
+│   │   └── custom_fault_adapter.py
 │   ├── memory/
 │   ├── observability/
 │   ├── orchestrator/
@@ -475,6 +485,9 @@ OpsFactory/
 │   │   ├── hermes-agent/
 │   │   └── langchain/
 │   ├── web_app/
+│   │   ├── app.py
+│   │   ├── static/js/app.js
+│   │   └── templates/index.html
 │   ├── Dockerfile
 │   ├── docker-compose.yaml
 │   ├── local_model_server.py
