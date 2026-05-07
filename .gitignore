@@ -1,0 +1,37 @@
+# macOS / editor
+.DS_Store
+.idea/
+.vscode/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Local environments
+.venv/
+venv/
+.env
+.env.*
+!.env.example
+!SRE/.env.example
+
+# Ops Factory runtime state
+.cache/
+.opsfactory/
+SRE/logs/
+SRE/data/memory/
+
+# Generated artifacts
+outputs/
+*.log
+
+# Large local model files
+models/
+
+# Node / frontend scratch
+node_modules/
+dist/
+build/
