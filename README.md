@@ -73,17 +73,23 @@ Ops Factory 默认使用本地 Qwen-0.6B。系统不内置任何外部 API Key�
 
 <table>
   <tr>
-    <td width="62%">
-      <video src="demo.mp4" controls preload="metadata" width="100%">
-        Your browser does not support embedded video. Open <a href="demo.mp4">demo.mp4</a> directly.
-      </video>
+    <td width="62%" align="center">
+      <a href="https://b23.tv/YEsMhx0" target="_blank">
+        <img 
+          src="https://img.shields.io/badge/Bilibili-点击播放%20Demo-00A1D6?style=for-the-badge&logo=bilibili&logoColor=white" 
+          alt="点击播放 Demo" 
+        />
+      </a>
+      <br/><br/>
+      <a href="https://b23.tv/YEsMhx0" target="_blank">
+        ▶ 点击播放 Demo 演示视频
+      </a>
     </td>
     <td width="38%">
       <h3>Demo演示覆盖完整交付链路</h3>
       <p>
         Demo 从数据入口开始，依次展示可视化控制台、运维问诊台、根因分析包括多智能体工作流和Hermes 自动诊断流程、故障恢复校验、持续守护、故障数据一键收集、模型交互、成效看板其中涉及失败归因与 vNext 发布。
       </p>
-      <p><code>Demo 视频文件：demo.mp4</code></p>
     </td>
   </tr>
 </table>
